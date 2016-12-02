@@ -22,17 +22,6 @@ def multigamma(x, N):
 def Wn_calc(N):
 	return (pi**(3.0*(N-1.0)/2.0))/multigamma((N-1.0)/2.0,3)
 
-"""
-def Cn_calc(N,gamma,nu):
-	ret = ((1.0 -gamma**2)**(1.0/2.0)) * ((8*pi)/((5.0**(5.0/2.0))*3.0**3.0)) * (((2.0*pi*gamma)/(3.0*nu))**(1.0/2.0))**(3.0*(N-1.0))
-	return 1.0/ret
-"""
-
-def Cn_calc(myN,mygamma,mynu):
-    ret = ((1.0 -mygamma**2)**(1.0/2.0)) * ((8*pi)/((5.0**(5.0/2.0))*(3.0**3.0))) * ((((2.0*pi*mygamma)/(3.0*mynu))**(1.0/2.0))**(3.0*(myN-1.0)))
-    return 1.0/ret
-
-
 def Pn_calc(N,gamma):
 	ret = (1/((2*pi)**(2.0*N+3))) * ((5.0**(5.0/2.0))*(3**(3.0*N/2.0+3.0))/(2*(1.0-gamma**2)**(1.0/2.0)))
 	return ret
@@ -45,8 +34,6 @@ def Sn_calc(N,gamma,nu,s1,s2):
 	ret = ((s2**3)/(s1**3))*(nu**(N-1.0)) * ((nu/gamma)**((3.0/2.0)*(N-1.0))) * scipy.exp(-1.0*(nu**2)/2.0)
 	return ret
 
-
-
 def integrate(N,nu,gamma,s1,s2,npoints):	
 
 	"""
@@ -54,7 +41,6 @@ def integrate(N,nu,gamma,s1,s2,npoints):
 	"""
 	An = An_calc(N)
 	Pn = Pn_calc(N,gamma)
-	Cn = Cn_calc(N,gamma,nu)
 
 
 	Wn = Wn_calc(N) 

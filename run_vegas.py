@@ -12,112 +12,87 @@ from scipy import special
 pi=math.pi
 
 
-npoints_arg=sys.argv[1]
-nfields=sys.argv[2]
 
-print "NPTS: ",npoints_arg
-print "NFIELDS: ",npoints_arg
+npoints_arg=sys.argv[1]
+nfields_arg=sys.argv[2]
+
+npoints = float(npoints_arg)
+nfields = int(nfields_arg)
+
+print "NPOINTS: ",npoints
+print "NFIELDS: ",nfields
 
 """
-Define the true expectation value of lam1*lam2*lam3 without the heaviside
-function in lam3, but with ordering in lambdas. This is to be used as
-a verification that the vegas algorithm is performing well. Beacuse the integrand
-is identical to the real case, but only the limits of integration change,
-I expect good performance of vegas relative to this analytic form to be
-a strong predictor of accuracy in the true estimates.
+An implementation of the analytic signed number density calculated in the paper. The integrand is almost identical to those of each of the stationary point integrands (minimum, saddles, maximum), minus an absolute value and heaviside functions. The numerical estimate of the signed number density is used to refine the VEGAS grid, and comparisons between this analytic result and the numerical estimate provide sanity checks.
 """
 
 def truint(myN,mynu,mys0,mys1):
 	ret = ((mys1**3)/(mys0**3))*(mynu**(myN-4.0))*np.exp((-1.0/2.0)*mynu**2) * ((-6.0 +11.0*myN -6.0*myN**2 + myN**3 - 3.0*((myN-1.0)**2)*(mynu**2) + 3.0*myN*(mynu**4) - (mynu**6))/((2**((myN+1.0)/2.0))*3.0*(3.0**(1.0/2.0))*(np.pi**(3.0/2.0)) * special.gamma(myN/2.0)))
 	return ret
 
+"""
+Define parameters s0 and s1 (from field theory power spectrum).
+"""
+gamma=0.01
+s0=1.0
+s1=1.0
+
 
 """
-Define parameters, as well as the set of values nu should loop over,
-and the resolution.
+Define the grid on which to sample nu-gamma parameter space.
 """
-s0=2.0
-s1=2.0
-gamma=0.5
-s2 = (s1**2)/(gamma*s0)
-N=float(nfields)
-print "NFIELDS: ",N
+nsamples_nu = 20
+#nsamples_gamma = 1
 
-
-nsamples=10
-nu=np.linspace(0.05,7.0,nsamples)
-#nu=np.linspace(1,5.0,nsamples)
-
-npoints=int(float(npoints_arg))
-print "NPOINTS: ",npoints
+nu=np.linspace(0.05,6.0, nsamples_nu)
+#gamma=np.linspace(0.00,1.0, nsamples_gamma)
 
 
 """
 Initialize output vectors.
 """
 
-means=np.zeros(nsamples)
-sdevs=np.zeros(nsamples)
-
-true_vals=np.zeros(nsamples)
-
-pct_sdevs=np.zeros(nsamples)
-errs=np.zeros(nsamples)
-abs_errs=np.zeros(nsamples)
-pct_errs=np.zeros(nsamples)
-ratios=np.zeros(nsamples)
+#The signed number density is gamma-independent
+signed_analytic = np.zeros(nsamples_nu) 
+signed_mean = np.zeros(nsamples_nu)
+signed_mean = np.zeros(nsamples_nu)
+signed_sdev = np.zeros(nsamples_nu)
+#Four entries for these densities: one for each type of stationary point
+means=np.zeros((nsamples_nu,4))
+sdevs=np.zeros((nsamples_nu,4))
 
 """
-Run the vegas algorithm over varying nu.
+Run the vegas algorithm over the specified grid in parameter space.
 """
 
-for samp in tqdm(range(nsamples)):
-	ret = integrate.integrate(N,nu[samp],gamma,s1,s2,npoints)
-	
-	signed = 0.0
-	for i in range(1,ret.shape[0]):
-		signed += (-1.0)**(i-1)*ret[i,0]
-		
-	means[samp]=ret[0,0]
-	#means[samp]=signed
-	sdevs[samp]=ret[0,1]
+for nu_samp in tqdm(range(nsamples_nu)):
+	signed_analytic[nu_samp] =truint(nfields,nu[nu_samp],s0,s1)
 
+	#Calculating sigma_2 for convenience in integration script.
+	s2 = (s1**2)/(gamma*s0)
 
-	true_vals[samp]=truint(N,nu[samp],s0,s1)
-	pct_sdevs[samp] = abs(100.0*(sdevs[samp])/means[samp])
-	errs[samp] = (means[samp]-true_vals[samp])
-	abs_errs[samp] = abs(means[samp]-true_vals[samp])
-	pct_errs[samp] = abs(100.0*(means[samp]-true_vals[samp])/true_vals[samp])
-	ratios[samp] = means[samp]/true_vals[samp]
+	#Calling the integration script. This script is the interface to VEGAS
+	ret = integrate.integrate(nfields,nu[nu_samp],gamma,s1,s2,npoints)
 
+	#The first entry in the returned vector is the signed number density mean estimate.
+	#The VEGAS grid is refined using the signed number density.	
+	signed_mean[nu_samp] = ret[0,0]		
+	signed_sdev[nu_samp] = ret[0,1]		
 
-"""
-Format an output table for spot-checking!
-"""
-
-t = PrettyTable(['Nu','Means','True','Sdev','PctSdev','Err','AbsErr','PctErr','Ratio'])
-
-for i in range(len(nu)):
-	rowstrs=[]
-	rowstrs.append('{:06.4f}'.format(nu[i]))
-	rowstrs.append('{:06.4f}'.format(means[i]))
-	rowstrs.append('{:06.4f}'.format(true_vals[i]))
-	rowstrs.append('{:06.4f}'.format(sdevs[i]))
-	rowstrs.append('{:06.4f}'.format(pct_sdevs[i]))
-	rowstrs.append('{:06.4f}'.format(errs[i]))
-	rowstrs.append('{:06.4f}'.format(abs_errs[i]))
-	rowstrs.append('{:06.4f}'.format(pct_errs[i]))
-	rowstrs.append('{:06.4f}'.format(ratios[i]))
-	t.add_row(rowstrs)
-
-print t
-
+	#The next four values are the mean estimates of the four types of stationary points.
+	#They are ranked in order of the number of negative Hessian eigenvalues.
+	#The first entry has zero negative eigenvalues: it is a density of minima.
+	#The second and third entries are densities of saddle points with one and two
+	#negative hessian eigenvalues, respectively.
+	#The fourth entry has three negative eigenvalues: it is a density of maxima. 
+	means[nu_samp,:]=ret[1:,0]
+	sdevs[nu_samp,:]=ret[1:,1]
 
 
 """
 Write these arrays out to an npz file for plotting.
 """
 
-np.savez("signed_"+str(nfields)+"field_"+str(npoints_arg)+".npz",npoints=npoints,N=N,s0=s0,s1=s1,gamma=gamma,nu=nu,means=means,sdevs=sdevs,true_vals=true_vals,pct_sdevs=pct_sdevs,errs=errs,abs_errs=abs_errs,pct_errs=pct_errs)
+np.savez("densities_"+str(nfields)+"fields_"+str(npoints_arg)+".npz",npoints=npoints,nfields=nfields,s0=s0,s1=s1,gamma=gamma,nu=nu,signed_analytic=signed_analytic,signed_mean=signed_mean,signed_sdev=signed_sdev,means=means,sdevs=sdevs)
 
 

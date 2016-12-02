@@ -18,87 +18,47 @@ from pylab import rcParams
 rcParams['figure.figsize'] = 10, 8
 plt.rc('font', size=16)
 
-#files = ["scalar_min_5field_1e6.npz","min_5field_1e6.npz","vectorized_min_0train_5field_1e6.npz"]
-files = ["hess_min_5field_1e5.npz", "vectorized_realmin_mintrain_5field_1e5.npz", "vectorized_realmin_signtrain_5field_1e5.npz"] 
 
-signed=False
+f=np.load("densities_4fields_1e4.npz")
 
 
-f=[]
-for filename in files:
-	f.append(np.load(filename))
+N=f['nfields']
+s0=f['s0']
+s1=f['s1']
+gamma=f['gamma']
+npoints=f['npoints']
+nu=f['nu']
 
-N=f[0]['N']
-s0=f[0]['s0']
-s1=f[0]['s1']
-gamma=f[0]['gamma']
+signed_mean=f['signed_mean']
+signed_sdev=f['signed_sdev']
+sdevs=f['sdevs']
+means=f['means']
 
-npoints=f[0]['npoints']
-
-nu=f[0]['nu']
-#pct_sdevs=f['pct_sdevs']
-
-#xedge=[0.09,2.1]
-xedge=[0.0,5.05]
-
-def nucut(nu,xlo,xhi):
-	return xlo<=nu and nu <= xhi
-
-nucut_vec = np.vectorize(nucut)
-
-cut_indices=np.where(nucut_vec(nu,xedge[0],xedge[1]))
-print cut_indices
-
-nu=f[0]['nu'][cut_indices]
-
-
-sdevs=[]
-means=[]
-errs=[]
-pct_errs=[]
-abs_errs=[]
-
-for el in f:
-	sdevs.append(el['sdevs'][cut_indices])
-	means.append(el['means'][cut_indices])
-	errs.append(el['errs'][cut_indices])
-	pct_errs.append(el['pct_errs'][cut_indices])
-	abs_errs.append(el['abs_errs'][cut_indices])
-
-
-"""
-print pct_errs
-print np.max(pct_errs)
-"""
-
-if signed:
-	truex_nsamp=1000
-	truex=np.linspace(xedge[0],xedge[1],1000)
-	truef_vec=np.vectorize(truint)
-	truey=truef_vec(N,truex,s0,s1)
-
+truex_nsamp=1000
+truex=np.linspace(nu[0],nu[-1],1000)
+truef_vec=np.vectorize(truint)
+truey=truef_vec(N,truex,s0,s1)
 
 axes=[]
 
 
-axes.append(plt.subplot2grid((20,1),(6,0),rowspan=14,colspan=1))
-axes[0].errorbar(nu,means[0],yerr=sdevs[0],marker="o",color='red',linestyle='None',lw=1.0,label="Scalar")
-axes[0].errorbar(nu,means[1],yerr=sdevs[1],marker="o",color='green',linestyle='None',lw=1.0,label="Vectorized. Min Training")
-axes[0].errorbar(nu,means[2],yerr=sdevs[2],marker="o",color='blue',linestyle='None',lw=1.0,label="Vectorized. Signed Training")
-if signed:
-	axes[0].plot(truex,truey,ls='-',lw=1.5,color='black',label="Analytic")
-#axes[0].plot(xax_vector,pert_vec0,color="red",label="Standard Vacuum Solution",lw=2,ls='-')
+#axes.append(plt.subplot2grid((20,1),(6,0),rowspan=14,colspan=1))
+fig1, ax1 = plt.subplots()
+axes.append(ax1)
+axes[0].errorbar(nu,signed_mean,yerr=signed_sdev,marker="o",color='red',linestyle='None',lw=1.0,label="Signed")
+#axes[0].errorbar(nu,means[1],yerr=sdevs[1],marker="o",color='green',linestyle='None',lw=1.0,label="Vectorized. Min Training")
+axes[0].plot(truex,truey,ls='-',lw=1.5,color='black',label="Analytic")
 
 #ax.set_yscale('log')
 #ax.set_ylim([1e-1,1])
 #ax.set_ylim([0,1.0])
 axes[0].set_xlabel(r'$\nu$'+" (Field Standard Deviations)",fontsize=18)
 axes[0].set_ylabel(r'$\langle \mathcal{N}_{min}(\nu)\rangle$',fontsize=18)
-axes[0].set_xlim(xedge)
+#axes[0].set_xlim(xedge)
 #axes[0].set_ylim([-10.0,3.0])
 #axes[0].yaxis.set_major_formatter(mpl.ticker.ScalarFormatter(useMathText=True, useOffset=False))
 #axes[0].yaxis.get_major_formatter().set_powerlimits((2, 3))
-
+"""
 if sign
 axes.append(plt.subplot2grid((20,1),(0,0),rowspan=5,colspan=10,sharex=axes[0]))
 
@@ -116,7 +76,7 @@ axes[1].set_ylabel("Error")
 axes[1].yaxis.set_major_formatter(mpl.ticker.ScalarFormatter(useMathText=True, useOffset=False))
 axes[1].yaxis.get_major_formatter().set_powerlimits((2, 3))
 plt.setp(axes[1].get_xticklabels(), visible=False)
-
+"""
 
 
 
@@ -126,11 +86,11 @@ plt.setp(axes[1].get_xticklabels(), visible=False)
 #legend = ax.legend(loc='center right', shadow=False)
 #legend = ax.legend(bbox_to_anchor=(0.9, 0.6), bbox_transform=plt.gcf().transFigure, shadow=False)
 
-h1, l1 = axes[0].get_legend_handles_labels()
-h2, l2 = axes[1].get_legend_handles_labels()
+#h1, l1 = axes[0].get_legend_handles_labels()
+#h2, l2 = axes[1].get_legend_handles_labels()
 
 #legend = axes[0].legend(h1+h2,l1+l2,bbox_to_anchor=(0.925, 0.4),shadow=False,fancybox=True)
-legend = axes[0].legend(h1+h2,l1+l2,loc='lower right',shadow=False,fancybox=True)
+legend = axes[0].legend(loc='lower right',shadow=False,fancybox=True)
 #legend = axes[0].legend(h1+h2,l1+l2,bbox_to_anchor=(0.01, 0.7),bbox_transform=plt.gcf().transFigure, shadow=False,fancybox=True)
 
 # The frame is matplotlib.patches.Rectangle instance surrounding the legend.
@@ -169,7 +129,7 @@ axes[0].text(0.9, 0.95, textstr, transform=axes[0].transAxes, fontsize=18,vertic
 """
 Calculate Chi2
 """
-
+"""
 def chi2_el(myn,mynu,mymean,mysig):
 	return ((truint(myn,mynu,s0,s1)-mymean)/mysig)**2
 
@@ -182,12 +142,13 @@ print len(nu)
 
 #props = dict(boxstyle='round', facecolor='blue', edgecolor='black',alpha=0.4)
 """
+"""
 props = dict(boxstyle='round', facecolor='white', edgecolor='black')
 axes[0].text(0.69, 0.96, r'$\chi^2/d.o.f.$'+'={:03.2f}'.format(chi2), transform=axes[0].transAxes, fontsize=18,verticalalignment='top', bbox=props)
 """
 #visible_labels = [lab for lab in axes[0].get_yticklabels() if lab.get_visible() is True and lab.get_text() != '']
-visible_labels = axes[1].get_yticklabels()
-plt.setp(visible_labels[1::2], visible=False)
+#visible_labels = axes[1].get_yticklabels()
+#plt.setp(visible_labels[1::2], visible=False)
 
 plt.show()
 #print sp.AtmosphericNeutrinoOscillationProbability(1,1,100*param.GeV,param.PI,param)
